@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sefirah Fog — Interactive Volumetric Gray Fog Studio</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: #050a0d;
+        color: #e4eef2;
+        overflow: hidden;
+        height: 100vh;
+        width: 100vw;
+      }
+
+      #fog-stage {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+      }
+
+      .hero-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 1;
+        pointer-events: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 2rem;
+      }
+
+      .hero-overlay h1 {
+        font-size: clamp(2rem, 4.5vw, 3.8rem);
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        font-weight: 700;
+        color: #dff4f7;
+        text-shadow: 0 4px 32px rgba(24, 210, 196, 0.35);
+      }
+
+      .hero-overlay p {
+        margin-top: 0.75rem;
+        max-width: 540px;
+        font-size: 0.95rem;
+        line-height: 1.6;
+        color: rgba(208, 228, 235, 0.78);
+      }
+
+      .panel {
+        position: fixed;
+        top: 16px;
+        right: 16px;
+        bottom: 16px;
+        width: 340px;
+        z-index: 10;
+        background: rgba(9, 17, 22, 0.78);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        border: 1px solid rgba(110, 185, 195, 0.22);
+        border-radius: 14px;
+        padding: 16px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        font-size: 12px;
+      }
+
+      .panel h2 {
+        font-size: 13px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #5eead4;
+        border-bottom: 1px solid rgba(94, 234, 212, 0.18);
+        padding-bottom: 6px;
+      }
+
+      .group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .row label {
+        color: #b7ccd4;
+        flex: 1;
+      }
+
+      .row input[type='range'] {
+        width: 135px;
+        accent-color: #2dd4bf;
+      }
+
+      .val {
+        width: 36px;
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+        color: #7dd3fc;
+      }
+
+      select,
+      button {
+        background: rgba(18, 32, 40, 0.92);
+        color: #e2f1f5;
+        border: 1px solid rgba(94, 234, 212, 0.3);
+        border-radius: 8px;
+        padding: 6px 10px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background: rgba(32, 58, 70, 0.95);
+        border-color: #5eead4;
+      }
+
+      .btn-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .layer-card {
+        background: rgba(15, 27, 34, 0.8);
+        border: 1px solid rgba(130, 175, 185, 0.18);
+        border-radius: 10px;
+        padding: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .layer-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-weight: 600;
+        color: #99f6e4;
+      }
+
+      input[type='color'] {
+        width: 28px;
+        height: 22px;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="fog-stage"></div>
+
+    <div class="hero-overlay">
+      <h1>Sefirah Fog</h1>
+      <p>Move your cursor or drag across the mist to part, swirl, and watch the wake spread and dissolve back into the gray fog.</p>
+    </div>
+
+    <aside class="panel">
+      <h2>Preset & Actions</h2>
+      <div class="row">
+        <label for="preset">Theme Preset</label>
+        <select id="preset">
+          <option value="grayFog" selected>Gray Fog (Default)</option>
+          <option value="sefirahThrone">Sefirah Throne (Light)</option>
+          <option value="crimsonAbyss">Crimson Abyss</option>
+          <option value="emeraldNebula">Emerald Nebula</option>
+          <option value="subtleMist">Subtle Mist</option>
+        </select>
+      </div>
+      <div class="btn-grid">
+        <button id="btn-pulse">Trigger Pulse</button>
+        <button id="btn-clear">Clear Wake</button>
+      </div>
+
+      <h2>Density & Size</h2>
+      <div class="group">
+        <div class="row">
+          <label>Transparency (Opacity)</label>
+          <input id="opacity" type="range" min="0" max="1" step="0.02" value="1" />
+          <span class="val" id="opacity-val">1</span>
+        </div>
+        <div class="row">
+          <label>Cloud Size (Scale)</label>
+          <input id="scale" type="range" min="0.6" max="5.0" step="0.1" value="5" />
+          <span class="val" id="scale-val">5</span>
+        </div>
+        <div class="row">
+          <label>Fog Thickness</label>
+          <input id="thickness" type="range" min="0.3" max="3.0" step="0.05" value="0.8" />
+          <span class="val" id="thickness-val">0.8</span>
+        </div>
+      </div>
+
+      <h2>Movement & Animation</h2>
+      <div class="group">
+        <div class="row">
+          <label>Enable Animation</label>
+          <input id="anim-enabled" type="checkbox" checked />
+        </div>
+        <div class="row">
+          <label>Wind Speed</label>
+          <input id="speed" type="range" min="0" max="2.5" step="0.05" value="0.65" />
+          <span class="val" id="speed-val">0.65</span>
+        </div>
+        <div class="row">
+          <label>Direction (deg)</label>
+          <input id="direction" type="range" min="0" max="360" step="1" value="18" />
+          <span class="val" id="direction-val">18°</span>
+        </div>
+        <div class="row">
+          <label>Turbulence</label>
+          <input id="turbulence" type="range" min="0" max="2.0" step="0.05" value="2" />
+          <span class="val" id="turbulence-val">2</span>
+        </div>
+      </div>
+
+      <h2>Mouse Interactivity</h2>
+      <div class="group">
+        <div class="row">
+          <label>Enable Interactivity</label>
+          <input id="inter-enabled" type="checkbox" checked />
+        </div>
+        <div class="row">
+          <label>Interaction Mode</label>
+          <select id="inter-mode">
+            <option value="swirl">Swirl (Vortex)</option>
+            <option value="part" selected>Part (Carve Trail)</option>
+            <option value="repel">Repel (Shockwave)</option>
+            <option value="attract">Attract (Pull Mist)</option>
+          </select>
+        </div>
+        <div class="row">
+          <label>Cursor Radius</label>
+          <input id="radius" type="range" min="0.04" max="0.35" step="0.01" value="0.08" />
+          <span class="val" id="radius-val">0.08</span>
+        </div>
+        <div class="row">
+          <label>Force Strength</label>
+          <input id="strength" type="range" min="0" max="2.5" step="0.05" value="0.15" />
+          <span class="val" id="strength-val">0.15</span>
+        </div>
+        <div class="row">
+          <label>Wake Spread</label>
+          <input id="spread" type="range" min="0" max="1" step="0.02" value="1" />
+          <span class="val" id="spread-val">1</span>
+        </div>
+        <div class="row">
+          <label>Disappearance Rate</label>
+          <input id="disappearance" type="range" min="0.005" max="1" step="0.005" value="0.02" />
+          <span class="val" id="disappearance-val">0.02</span>
+        </div>
+        <div class="row">
+          <label>Trail Clearing</label>
+          <input id="clearAmount" type="range" min="0" max="1" step="0.02" value="0.66" />
+          <span class="val" id="clearAmount-val">0.66</span>
+        </div>
+      </div>
+
+      <h2>Atmosphere & Stars</h2>
+      <div class="group">
+        <div class="row">
+          <label>Aurora Backlight</label>
+          <input id="backlight-enabled" type="checkbox" checked />
+        </div>
+        <div class="row">
+          <label>Spirit Stars</label>
+          <input id="stars-enabled" type="checkbox" checked />
+        </div>
+        <div class="row">
+          <label>Star Count</label>
+          <input id="star-count" type="range" min="0" max="180" step="5" value="50" />
+          <span class="val" id="star-count-val">50</span>
+        </div>
+        <div class="row">
+          <label>Star Radius (Large)</label>
+          <input id="star-radius" type="range" min="0.5" max="4.0" step="0.1" value="3.2" />
+          <span class="val" id="star-radius-val">3.2</span>
+        </div>
+        <div class="row">
+          <label>Large Star Ratio</label>
+          <input id="star-radius-chance" type="range" min="0" max="1" step="0.05" value="0.3" />
+          <span class="val" id="star-radius-chance-val">0.3</span>
+        </div>
+      </div>
+
+      <h2>Quality & Performance</h2>
+      <div class="group">
+        <div class="row">
+          <label>Shader Detail</label>
+          <input id="detail" type="range" min="2" max="6" step="1" value="6" />
+          <span class="val" id="detail-val">6</span>
+        </div>
+        <div class="row">
+          <label>Resolution Scale</label>
+          <input id="resolutionScale" type="range" min="0.25" max="1" step="0.05" value="1" />
+          <span class="val" id="resolutionScale-val">1</span>
+        </div>
+        <div class="row">
+          <label>Target FPS (0=Max)</label>
+          <input id="targetFps" type="range" min="0" max="120" step="5" value="30" />
+          <span class="val" id="targetFps-val">30</span>
+        </div>
+      </div>
+
+      <h2>Color Layers</h2>
+      <div id="layers-list" class="group"></div>
+      <button id="btn-add-layer">+ Add Fog Layer (Max 6)</button>
+    </aside>
+
+    <script type="module">
+      import { createSefirahFog, parseColor } from '../dist/index.mjs';
+
+      const fog = createSefirahFog('#fog-stage', { preset: 'grayFog' });
+
+      const toHex = (color) => {
+        const [r, g, b] = parseColor(color);
+        return (
+          '#' +
+          [r, g, b]
+            .map((c) => Math.round(c * 255).toString(16).padStart(2, '0'))
+            .join('')
+        );
+      };
+
+      const formatTargetFps = (fps) => (fps === 0 ? 'Max' : String(fps));
+
+      const setSlider = (id, value, formatOrSuffix = '') => {
+        const el = document.getElementById(id);
+        const valEl = document.getElementById(`${id}-val`);
+        if (el) el.value = String(value);
+        if (valEl) {
+          valEl.textContent =
+            typeof formatOrSuffix === 'function'
+              ? formatOrSuffix(value)
+              : `${value}${formatOrSuffix}`;
+        }
+      };
+
+      function syncControlsFromConfig() {
+        const cfg = fog.getConfig();
+        setSlider('opacity', cfg.opacity);
+        setSlider('scale', cfg.scale);
+        setSlider('thickness', cfg.thickness);
+
+        document.getElementById('anim-enabled').checked = cfg.animation.enabled;
+        setSlider('speed', cfg.animation.speed);
+        const dirDeg =
+          typeof cfg.animation.direction === 'number'
+            ? cfg.animation.direction
+            : Math.round(
+                (Math.atan2(cfg.animation.direction.y, cfg.animation.direction.x) *
+                  180) /
+                  Math.PI
+              );
+        setSlider('direction', dirDeg, '°');
+        setSlider('turbulence', cfg.animation.turbulence);
+
+        document.getElementById('inter-enabled').checked = cfg.interaction.enabled;
+        document.getElementById('inter-mode').value = cfg.interaction.mode;
+        setSlider('radius', cfg.interaction.radius);
+        setSlider('strength', cfg.interaction.strength);
+        setSlider('spread', cfg.interaction.spread);
+        setSlider('disappearance', cfg.interaction.disappearance);
+        setSlider('clearAmount', cfg.interaction.clearAmount);
+
+        document.getElementById('backlight-enabled').checked = cfg.backlight.enabled;
+        document.getElementById('stars-enabled').checked = cfg.stars.enabled;
+        setSlider('star-count', cfg.stars.count);
+        setSlider('star-radius', cfg.stars.radius);
+        setSlider('star-radius-chance', cfg.stars.radiusChance);
+
+        setSlider('detail', cfg.detail);
+        setSlider('resolutionScale', cfg.resolutionScale);
+        setSlider('targetFps', cfg.targetFps, formatTargetFps);
+      }
+
+      const bindSlider = (id, formatOrSuffix, onChange) => {
+        const el = document.getElementById(id);
+        const valEl = document.getElementById(`${id}-val`);
+        el.addEventListener('input', () => {
+          const num = parseFloat(el.value);
+          valEl.textContent =
+            typeof formatOrSuffix === 'function'
+              ? formatOrSuffix(num)
+              : `${num}${formatOrSuffix}`;
+          onChange(num);
+        });
+      };
+
+      function renderLayerEditors() {
+        const container = document.getElementById('layers-list');
+        const cfg = fog.getConfig();
+        container.innerHTML = '';
+
+        cfg.layers.forEach((layer, idx) => {
+          const card = document.createElement('div');
+          card.className = 'layer-card';
+          card.innerHTML = `
+            <div class="layer-header">
+              <span>Layer ${idx + 1}</span>
+              <div style="display:flex;gap:6px;align-items:center">
+                <input type="color" data-role="base" value="${toHex(layer.color)}" title="Base Color" />
+                <input type="color" data-role="rim" value="${toHex(layer.highlightColor || '#69a2a8')}" title="Highlight Color" />
+                ${cfg.layers.length > 1 ? `<button data-role="del" style="padding:2px 6px">✕</button>` : ''}
+              </div>
+            </div>
+            <div class="row">
+              <label>Layer Opacity</label>
+              <input type="range" data-role="opacity" min="0" max="1" step="0.02" value="${layer.opacity}" />
+            </div>
+            <div class="row">
+              <label>Layer Thickness</label>
+              <input type="range" data-role="thickness" min="0.2" max="2.0" step="0.05" value="${layer.thickness}" />
+            </div>
+          `;
+
+          const updateLayer = (patch) => {
+            const nextLayers = fog.getConfig().layers;
+            nextLayers[idx] = { ...nextLayers[idx], ...patch };
+            fog.setLayers(nextLayers);
+          };
+
+          card.querySelector('[data-role="base"]').addEventListener('input', (e) => {
+            updateLayer({ color: e.target.value });
+          });
+          card.querySelector('[data-role="rim"]').addEventListener('input', (e) => {
+            updateLayer({ highlightColor: e.target.value });
+          });
+          card.querySelector('[data-role="opacity"]').addEventListener('input', (e) => {
+            updateLayer({ opacity: parseFloat(e.target.value) });
+          });
+          card.querySelector('[data-role="thickness"]').addEventListener('input', (e) => {
+            updateLayer({ thickness: parseFloat(e.target.value) });
+          });
+          const delBtn = card.querySelector('[data-role="del"]');
+          if (delBtn) {
+            delBtn.addEventListener('click', () => {
+              fog.removeLayer(idx);
+              renderLayerEditors();
+            });
+          }
+
+          container.appendChild(card);
+        });
+      }
+
+      document.getElementById('preset').addEventListener('change', (e) => {
+        fog.setPreset(e.target.value);
+        syncControlsFromConfig();
+        renderLayerEditors();
+      });
+
+      document.getElementById('btn-pulse').addEventListener('click', () => {
+        fog.triggerPulse(0.5, 0.5, { velX: 1.1, velY: 0.4, duration: 0.28 });
+      });
+
+      document.getElementById('btn-clear').addEventListener('click', () => {
+        fog.clearWake();
+      });
+
+      document.getElementById('btn-add-layer').addEventListener('click', () => {
+        fog.addLayer({
+          color: '#223d47',
+          highlightColor: '#78b8c2',
+          opacity: 0.65,
+          scale: 1.25,
+          thickness: 1.05,
+          speedMultiplier: 0.9,
+        });
+        renderLayerEditors();
+      });
+
+      bindSlider('opacity', '', (opacity) => fog.updateConfig({ opacity }));
+      bindSlider('scale', '', (scale) => fog.updateConfig({ scale }));
+      bindSlider('thickness', '', (thickness) => fog.updateConfig({ thickness }));
+
+      document.getElementById('anim-enabled').addEventListener('change', (e) => {
+        fog.setAnimationEnabled(e.target.checked);
+      });
+      bindSlider('speed', '', (speed) => fog.updateConfig({ animation: { speed } }));
+      bindSlider('direction', '°', (direction) => fog.updateConfig({ animation: { direction } }));
+      bindSlider('turbulence', '', (turbulence) => fog.updateConfig({ animation: { turbulence } }));
+
+      document.getElementById('inter-enabled').addEventListener('change', (e) => {
+        fog.setInteractionEnabled(e.target.checked);
+      });
+      document.getElementById('inter-mode').addEventListener('change', (e) => {
+        fog.updateConfig({ interaction: { mode: e.target.value } });
+      });
+      bindSlider('radius', '', (radius) => fog.updateConfig({ interaction: { radius } }));
+      bindSlider('strength', '', (strength) => fog.updateConfig({ interaction: { strength } }));
+      bindSlider('spread', '', (spread) => fog.updateConfig({ interaction: { spread } }));
+      bindSlider('disappearance', '', (disappearance) => fog.updateConfig({ interaction: { disappearance } }));
+      bindSlider('clearAmount', '', (clearAmount) => fog.updateConfig({ interaction: { clearAmount } }));
+
+      document.getElementById('backlight-enabled').addEventListener('change', (e) => {
+        fog.updateConfig({ backlight: { enabled: e.target.checked } });
+      });
+      document.getElementById('stars-enabled').addEventListener('change', (e) => {
+        fog.updateConfig({ stars: { enabled: e.target.checked } });
+      });
+      bindSlider('star-count', '', (count) => fog.updateConfig({ stars: { count } }));
+      bindSlider('star-radius', '', (radius) => fog.updateConfig({ stars: { radius } }));
+      bindSlider('star-radius-chance', '', (radiusChance) => fog.updateConfig({ stars: { radiusChance } }));
+
+      bindSlider('detail', '', (detail) => fog.updateConfig({ detail }));
+      bindSlider('resolutionScale', '', (resolutionScale) => fog.updateConfig({ resolutionScale }));
+      bindSlider('targetFps', formatTargetFps, (targetFps) => fog.updateConfig({ targetFps }));
+
+      syncControlsFromConfig();
+      renderLayerEditors();
+    </script>
+  </body>
+</html>
