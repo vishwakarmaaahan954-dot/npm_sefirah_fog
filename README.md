@@ -221,12 +221,12 @@ import { SefirahFog } from 'sefirah-fog/react';
 export function Hero() {
   return (
     <SefirahFog
-      options={{
+      options={ {
         preset: 'grayFog',
         transparentBackground: true,
         interaction: { mode: 'swirl' },
-      }}
-      style={{ width: '100%', height: '100vh' }}
+      } }
+      style={ { width: '100%', height: '100vh' } }
     >
       <h1>Above the Gray Fog</h1>
     </SefirahFog>
@@ -250,7 +250,7 @@ export function InteractiveHero() {
       <button onClick={() => fogRef.current?.triggerPulse(0.5, 0.5)}>
         Create a pulse
       </button>
-      <SefirahFog ref={fogRef} style={{ height: '70vh' }} />
+      <SefirahFog ref={fogRef} style={ { height: '70vh' } } />
     </>
   );
 }
